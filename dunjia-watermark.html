@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>遁甲 Dunjia – Invisible image watermark</title>
+<style>
+:root{--bg:#eef0ee;--panel:#fff;--ink:#16221e;--mute:#5d6b65;--line:#d3d9d5;--acc:#1f6b57;--acc-ink:#fff;--ok:#1f6b57;--bad:#a3342c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121815;--panel:#1b241f;--ink:#e8efeb;--mute:#97a59d;--line:#2f3b35;--acc:#5fc4a4;--acc-ink:#0d1a15;--ok:#5fc4a4;--bad:#f08a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121815;--panel:#1b241f;--ink:#e8efeb;--mute:#97a59d;--line:#2f3b35;--acc:#5fc4a4;--acc-ink:#0d1a15;--ok:#5fc4a4;--bad:#f08a80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:28px 18px 48px}
+h1{font-weight:800;font-size:clamp(2rem,6vw,3.2rem);letter-spacing:-.03em;margin:0 0 4px;line-height:1.05}
+.sub{color:var(--mute);margin:0 0 22px;max-width:62ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+label{display:block;font-weight:600;font-size:.9rem;margin:14px 0 6px}
+label:first-child{margin-top:0}
+input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.row{display:flex;justify-content:space-between}.val{color:var(--mute);font-weight:400}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:360px}
+.seg button{flex:1;padding:9px 4px;border:0;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);font-weight:600}
+button:focus-visible,input:focus-visible,.drop:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:30px 18px;text-align:center;cursor:pointer;margin-top:14px}
+.drop.over{border-color:var(--acc)}.drop span{display:block;color:var(--mute);font-size:.9rem}
+.btn{padding:11px 18px;border-radius:9px;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);font:600 .95rem "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;cursor:pointer;margin-top:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius:6px}
+#msgE,#res{margin-top:12px;font-weight:600}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.note{color:var(--mute);font-size:.88rem;margin-top:14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>遁甲 Dunjia</h1>
+<p class="sub">Hide a secret ownership signal inside your image’s pixels. It can’t be seen by people, and later you can prove the image is yours by checking it with the same key. Everything runs in your browser.</p>
+<div class="seg" id="tabs"><button data-t="e" aria-pressed="true">Embed</button><button data-t="v" aria-pressed="false">Verify</button></div>
+
+<div id="pE">
+  <div class="panel">
+    <label for="keyE">Secret key (your name, ID, or a passphrase)</label>
+    <input type="password" id="keyE" autocomplete="off" placeholder="Keep this to prove ownership later">
+    <label for="str"><span class="row"><span>Strength</span><span class="val" id="strV"></span></span></label>
+    <input type="range" id="str" min="1" max="8" step="0.5" value="3">
+    <div class="note">Higher survives more compression and editing, but becomes more likely to be visible. 3 is a good default.</div>
+    <div class="drop" id="dropE" tabindex="0" role="button">Choose or drop an image<span>JPG, PNG or WebP, at least 64 px on each side</span></div>
+    <input type="file" id="fileE" accept="image/*" hidden>
+    <div id="msgE" role="status"></div>
+    <canvas id="cv" hidden></canvas>
+    <button class="btn" id="dl" hidden>Download protected PNG</button>
+  </div>
+</div>
+
+<div id="pV" hidden>
+  <div class="panel">
+    <label for="keyV">Secret key</label>
+    <input type="password" id="keyV" autocomplete="off" placeholder="The key used when embedding">
+    <div class="drop" id="dropV" tabindex="0" role="button">Choose or drop an image to check<span>Works best on the PNG you downloaded</span></div>
+    <input type="file" id="fileV" accept="image/*" hidden>
+    <div id="res" role="status"></div>
+  </div>
+</div>
+
+<p class="note"><b>What this does and doesn’t do.</b> The mark is applied across the entire image and may persist after JPEG re-saving and cropping. However, it is not foolproof and may be compromised by significant resizing, screenshots taken at different scales, AI regeneration, or deliberate removal. AI models may not recognize or respond to the embedded pattern, and the mark does not prevent an image from being copied, used, or processed by AI systems.</p>
+<p class="note">This app is provided free of charge and on an as-is basis. Users are responsible for evaluating the suitability of the mark for their intended use and for taking any additional measures necessary to protect their images and intellectual property. The mark should be regarded as a potential indicator of ownership, not a guarantee of protection against unauthorized use.</p>
+</div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},T=64;
+function hash(s){var h=1779033703^s.length;for(var i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pattern(key){
+  var r=rng(hash('stamp:'+key)),p=new Float32Array(T*T),q=new Float32Array(T*T),i,x,y,dx,dy;
+  for(i=0;i<p.length;i++)p[i]=r()<.5?-1:1;
+  for(y=0;y<T;y++)for(x=0;x<T;x++){var a=0;for(dy=-1;dy<=1;dy++)for(dx=-1;dx<=1;dx++)a+=p[((y+dy+T)%T)*T+(x+dx+T)%T];q[y*T+x]=a}
+  var m=0,v=0;for(i=0;i<q.length;i++)m+=q[i];m/=q.length;
+  for(i=0;i<q.length;i++){q[i]-=m;v+=q[i]*q[i]}v=Math.sqrt(v/q.length);
+  for(i=0;i<q.length;i++)q[i]/=v;return q;
+}
+function readImg(f,cb,err){
+  if(!f||!/^image\//.test(f.type))return err('That file isn’t an image.');
+  var im=new Image();im.onload=function(){
+    if(im.naturalWidth<64||im.naturalHeight<64)return err('Image is too small. Use one at least 64 px on each side.');
+    var c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+    var x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0);cb(c,x)};
+  im.onerror=function(){err('This image couldn’t be read.')};im.src=URL.createObjectURL(f);
+}
+function wire(drop,file,fn){
+  drop.onclick=function(){file.value='';file.click()};
+  drop.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();drop.onclick()}};
+  file.onchange=function(){fn(file.files[0])};
+  drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.add('over')});
+  drop.addEventListener('dragleave',function(){drop.classList.remove('over')});
+  drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('over');fn(e.dataTransfer.files[0])});
+}
+// tabs
+$('tabs').onclick=function(e){var b=e.target.closest('button');if(!b)return;
+  [].forEach.call($('tabs').children,function(c){c.setAttribute('aria-pressed',c===b)});
+  $('pE').hidden=b.dataset.t!=='e';$('pV').hidden=b.dataset.t!=='v'};
+$('str').oninput=function(){$('strV').textContent=this.value};$('strV').textContent=$('str').value;
+
+// embed
+var cv=$('cv'),name='image';
+wire($('dropE'),$('fileE'),function(f){
+  var key=$('keyE').value;
+  if(!key){$('msgE').className='bad';$('msgE').textContent='Enter a secret key first, then choose the image.';return}
+  if(!f)return;name=f.name.replace(/\.[^.]+$/,'')||'image';
+  $('msgE').className='';$('msgE').textContent='Embedding…';
+  readImg(f,function(c,x){
+    var W=c.width,H=c.height,d=x.getImageData(0,0,W,H),px=d.data,p=pattern(key),s=parseFloat($('str').value);
+    for(var y=0;y<H;y++){var row=(y%T)*T;for(var xx=0;xx<W;xx++){
+      var v=p[row+xx%T]*s,i=(y*W+xx)*4;px[i]+=v;px[i+1]+=v;px[i+2]+=v}}
+    cv.width=W;cv.height=H;cv.getContext('2d').putImageData(d,0,0);
+    cv.hidden=false;$('dl').hidden=false;$('msgE').className='ok';
+    $('msgE').textContent='Done. The preview below looks the same as your original. Download the PNG and keep your key.';
+  },function(m){$('msgE').className='bad';$('msgE').textContent=m});
+});
+$('dl').onclick=function(){
+  cv.toBlob(function(b){
+    if(!b){$('msgE').className='bad';$('msgE').textContent='Export failed. Try a smaller image.';return}
+    var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name+'-protected.png';
+    document.body.appendChild(a);a.click();a.remove();
+    $('msgE').className='ok';$('msgE').textContent='Saved as '+name+'-protected.png (check your Downloads folder).';
+  },'image/png');
+};
+
+// verify
+wire($('dropV'),$('fileV'),function(f){
+  var key=$('keyV').value,r=$('res');
+  if(!key){r.className='bad';r.textContent='Enter the secret key first, then choose the image.';return}
+  if(!f)return;r.className='';r.textContent='Checking…';
+  setTimeout(function(){readImg(f,function(c,x){
+    var W=c.width,H=c.height,px=x.getImageData(0,0,W,H).data,g=new Float32Array(W*H),i,xx,y;
+    for(i=0;i<W*H;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
+    var F=new Float32Array(T*T),N=new Float32Array(T*T);
+    for(y=1;y<H-1;y++)for(xx=1;xx<W-1;xx++){
+      var k=y*W+xx,b=(g[k-1]+g[k+1]+g[k-W]+g[k+W]+g[k-W-1]+g[k-W+1]+g[k+W-1]+g[k+W+1]+g[k])/9,j=(y%T)*T+xx%T;
+      F[j]+=g[k]-b;N[j]++}
+    var m=0;for(i=0;i<F.length;i++){F[i]/=N[i]||1;m+=F[i]}m/=F.length;for(i=0;i<F.length;i++)F[i]-=m;
+    var p=pattern(key),vals=new Float32Array(T*T),dx,dy,u,w;
+    for(dy=0;dy<T;dy++)for(dx=0;dx<T;dx++){var a=0;
+      for(w=0;w<T;w++){var ro=((w+dy)%T)*T,rp=w*T;for(u=0;u<T;u++)a+=F[ro+(u+dx)%T]*p[rp+u]}
+      vals[dy*T+dx]=a}
+    var mx=-1e9,mean=0,sd=0;for(i=0;i<vals.length;i++){mean+=vals[i];if(vals[i]>mx)mx=vals[i]}mean/=vals.length;
+    for(i=0;i<vals.length;i++)sd+=(vals[i]-mean)*(vals[i]-mean);sd=Math.sqrt(sd/vals.length);
+    var z=(mx-mean)/sd,found=z>7;
+    r.className=found?'ok':'bad';
+    r.textContent=found?'Watermark found for this key (confidence score '+z.toFixed(1)+'). This image carries your mark.'
+      :'No watermark found for this key (score '+z.toFixed(1)+'). The key may be wrong, or the image was resized or edited too heavily.';
+  },function(m){r.className='bad';r.textContent=m})},30);
+});
+})();
+</script>
+</body>
+</html>
