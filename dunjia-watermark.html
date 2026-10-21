@@ -21,7 +21,7 @@ label:first-child{margin-top:0}
 input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 input[type=range]{width:100%;accent-color:var(--acc)}
 .row{display:flex;justify-content:space-between}.val{color:var(--mute);font-weight:400}
-.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:360px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:460px}
 .seg button{flex:1;padding:9px 4px;border:0;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);font-weight:600}
@@ -35,6 +35,12 @@ canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius
 #msgE,#res{margin-top:12px;font-weight:600}
 .ok{color:var(--ok)}.bad{color:var(--bad)}
 .note{color:var(--mute);font-size:.88rem;margin-top:14px}
+.how{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;font-size:.9rem;color:var(--mute)}
+.how summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.how table{border-collapse:collapse;margin:8px 0;min-width:280px}
+.how th,.how td{border:1px solid var(--line);padding:6px 12px;text-align:left}
+.how th{color:var(--ink)}
+.panel>.drop:first-child{margin-top:0}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -42,17 +48,18 @@ canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius
 <div class="wrap">
 <h1>遁甲 Dunjia</h1>
 <p class="sub">Hide a secret ownership signal inside your image’s pixels. It can’t be seen by people, and later you can prove the image is yours by checking it with the same key. Everything runs in your browser.</p>
-<div class="seg" id="tabs"><button data-t="e" aria-pressed="true">Embed</button><button data-t="v" aria-pressed="false">Verify</button></div>
+<div class="seg" id="tabs"><button data-t="e" aria-pressed="true">Embed</button><button data-t="v" aria-pressed="false">Verify</button><button data-t="s" aria-pressed="false">To SVG</button></div>
 
 <div id="pE">
   <div class="panel">
+    <div class="drop" id="dropE" tabindex="0" role="button">Choose or drop an image<span>JPG, PNG or WebP, at least 64 px on each side</span></div>
+    <input type="file" id="fileE" accept="image/*" hidden>
     <label for="keyE">Secret key (your name, ID, or a passphrase)</label>
     <div class="keyrow"><input type="password" id="keyE" autocomplete="off" placeholder="Keep this to prove ownership later"><button type="button" class="show" data-for="keyE" aria-pressed="false">Show</button></div>
     <label for="str"><span class="row"><span>Strength</span><span class="val" id="strV"></span></span></label>
     <input type="range" id="str" min="1" max="8" step="0.5" value="3">
     <div class="note">Higher survives more compression and editing, but becomes more likely to be visible. 3 is a good default.</div>
-    <div class="drop" id="dropE" tabindex="0" role="button">Choose or drop an image<span>JPG, PNG or WebP, at least 64 px on each side</span></div>
-    <input type="file" id="fileE" accept="image/*" hidden>
+    <button class="btn" id="goE">Embed watermark</button>
     <div id="msgE" role="status"></div>
     <canvas id="cv" hidden></canvas>
     <button class="btn" id="dl" hidden>Download protected PNG</button>
@@ -61,11 +68,39 @@ canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius
 
 <div id="pV" hidden>
   <div class="panel">
-    <label for="keyV">Secret key</label>
-    <div class="keyrow"><input type="password" id="keyV" autocomplete="off" placeholder="The key used when embedding"><button type="button" class="show" data-for="keyV" aria-pressed="false">Show</button></div>
     <div class="drop" id="dropV" tabindex="0" role="button">Choose or drop an image to check<span>Works best on the PNG you downloaded</span></div>
     <input type="file" id="fileV" accept="image/*" hidden>
+    <label for="keyV">Secret key</label>
+    <div class="keyrow"><input type="password" id="keyV" autocomplete="off" placeholder="The key used when embedding"><button type="button" class="show" data-for="keyV" aria-pressed="false">Show</button></div>
+    <button class="btn" id="goV">Check image</button>
     <div id="res" role="status"></div>
+    <details class="how">
+      <summary>How to read the match strength</summary>
+      <p>The match strength shows how clearly your key’s hidden pattern stands out in the image. Higher means a clearer match.</p>
+      <p>0% means no sign of the pattern, 50% is the point where the mark counts as found, and 100% is a very clear match.</p>
+      <p>A result of <b>50% or higher means “found”</b>, and anything below 50% means “not found”.</p>
+      <p>The percentage is not a statistical probability. It does not mean “X% chance this image is yours” or the chance of a false match. It is a readable gauge of how strongly your key’s pattern shows up. The scale comes from simulated tests, so treat it as a rough guide, not a calibrated measurement.</p>
+      <p>A higher percentage comes from a stronger embed setting, larger images and smoother pictures. Heavy compression, resizing and editing lower it. A low result doesn’t prove the mark is absent, only that the evidence is weaker.</p>
+    </details>
+  </div>
+</div>
+
+<div id="pS" hidden>
+  <div class="panel">
+    <label>Method</label>
+    <div class="seg" id="sMode"><button data-v="trace" aria-pressed="true">Vector trace</button><button data-v="embed" aria-pressed="false">Embed image</button></div>
+    <div id="sOpts">
+      <label for="sDet"><span class="row"><span>Detail (longest side, px)</span><span class="val" id="sDetV"></span></span></label>
+      <input type="range" id="sDet" min="40" max="320" step="10" value="160">
+      <label for="sCol"><span class="row"><span>Number of colors</span><span class="val" id="sColV"></span></span></label>
+      <input type="range" id="sCol" min="2" max="32" value="12">
+    </div>
+    <div class="note" id="sHelp"></div>
+    <div class="drop" id="dropS" tabindex="0" role="button">Choose or drop a picture to convert<span>JPG, PNG or WebP</span></div>
+    <input type="file" id="fileS" accept="image/*" hidden>
+    <div id="msgS" role="status"></div>
+    <img id="sPrev" alt="SVG preview" hidden style="max-width:100%;height:auto;display:block;margin:14px auto 0;border-radius:6px;background:repeating-conic-gradient(#8883 0 25%,#0000 0 50%) 0 0/16px 16px">
+    <button class="btn" id="sDl" hidden>Download SVG</button>
   </div>
 </div>
 
@@ -107,17 +142,24 @@ document.querySelectorAll('.show').forEach(function(b){b.onclick=function(){
 // tabs
 $('tabs').onclick=function(e){var b=e.target.closest('button');if(!b)return;
   [].forEach.call($('tabs').children,function(c){c.setAttribute('aria-pressed',c===b)});
-  $('pE').hidden=b.dataset.t!=='e';$('pV').hidden=b.dataset.t!=='v'};
+  $('pE').hidden=b.dataset.t!=='e';$('pV').hidden=b.dataset.t!=='v';$('pS').hidden=b.dataset.t!=='s'};
 $('str').oninput=function(){$('strV').textContent=this.value};$('strV').textContent=$('str').value;
 
 // embed
 var cv=$('cv'),name='image';
+var eFile=null;
 wire($('dropE'),$('fileE'),function(f){
+  if(!f)return;eFile=f;name=f.name.replace(/\.[^.]+$/,'')||'image';
+  $('dropE').firstChild.nodeValue='Selected: '+f.name;
+  if($('keyE').value)doEmbed();
+  else{$('msgE').className='';$('msgE').textContent='Image loaded. Now enter your secret key and click Embed watermark.'}
+});
+function doEmbed(){
   var key=$('keyE').value;
-  if(!key){$('msgE').className='bad';$('msgE').textContent='Enter a secret key first, then choose the image.';return}
-  if(!f)return;name=f.name.replace(/\.[^.]+$/,'')||'image';
+  if(!eFile){$('msgE').className='bad';$('msgE').textContent='Choose an image first.';return}
+  if(!key){$('msgE').className='bad';$('msgE').textContent='Enter a secret key, then click Embed watermark.';return}
   $('msgE').className='';$('msgE').textContent='Embedding…';
-  readImg(f,function(c,x){
+  readImg(eFile,function(c,x){
     var W=c.width,H=c.height,d=x.getImageData(0,0,W,H),px=d.data,p=pattern(key),s=parseFloat($('str').value);
     for(var y=0;y<H;y++){var row=(y%T)*T;for(var xx=0;xx<W;xx++){
       var v=p[row+xx%T]*s,i=(y*W+xx)*4;px[i]+=v;px[i+1]+=v;px[i+2]+=v}}
@@ -125,7 +167,9 @@ wire($('dropE'),$('fileE'),function(f){
     cv.hidden=false;$('dl').hidden=false;$('msgE').className='ok';
     $('msgE').textContent='Done. The preview below looks the same as your original. Download the PNG and keep your key.';
   },function(m){$('msgE').className='bad';$('msgE').textContent=m});
-});
+}
+$('goE').onclick=doEmbed;
+$('str').addEventListener('change',function(){if(eFile&&$('keyE').value)doEmbed()});
 $('dl').onclick=function(){
   cv.toBlob(function(b){
     if(!b){$('msgE').className='bad';$('msgE').textContent='Export failed. Try a smaller image.';return}
@@ -136,11 +180,18 @@ $('dl').onclick=function(){
 };
 
 // verify
+var vFile=null;
 wire($('dropV'),$('fileV'),function(f){
+  if(!f)return;vFile=f;$('dropV').firstChild.nodeValue='Selected: '+f.name;
+  if($('keyV').value)doVerify();
+  else{$('res').className='';$('res').textContent='Image loaded. Now enter your secret key and click Check image.'}
+});
+function doVerify(){
   var key=$('keyV').value,r=$('res');
-  if(!key){r.className='bad';r.textContent='Enter the secret key first, then choose the image.';return}
-  if(!f)return;r.className='';r.textContent='Checking…';
-  setTimeout(function(){readImg(f,function(c,x){
+  if(!vFile){r.className='bad';r.textContent='Choose an image first.';return}
+  if(!key){r.className='bad';r.textContent='Enter the secret key, then click Check image.';return}
+  r.className='';r.textContent='Checking…';
+  setTimeout(function(){readImg(vFile,function(c,x){
     var W=c.width,H=c.height,px=x.getImageData(0,0,W,H).data,g=new Float32Array(W*H),i,xx,y;
     for(i=0;i<W*H;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
     var F=new Float32Array(T*T),N=new Float32Array(T*T);
@@ -154,12 +205,84 @@ wire($('dropV'),$('fileV'),function(f){
       vals[dy*T+dx]=a}
     var mx=-1e9,mean=0,sd=0;for(i=0;i<vals.length;i++){mean+=vals[i];if(vals[i]>mx)mx=vals[i]}mean/=vals.length;
     for(i=0;i<vals.length;i++)sd+=(vals[i]-mean)*(vals[i]-mean);sd=Math.sqrt(sd/vals.length);
-    var z=(mx-mean)/sd,found=z>7;
+    var z=(mx-mean)/sd,found=z>7,pct=Math.round(z<=4?0:z<=7?(z-4)/3*50:50+(Math.min(z,20)-7)/13*50);
     r.className=found?'ok':'bad';
-    r.textContent=found?'Watermark found for this key (confidence score '+z.toFixed(1)+'). This image carries your mark.'
-      :'No watermark found for this key (score '+z.toFixed(1)+'). The key may be wrong, or the image was resized or edited too heavily.';
+    r.textContent=found?'Watermark found for this key (match strength '+pct+'%). This image carries your mark.'
+      :'No watermark found for this key (match strength '+pct+'%). The key may be wrong, or the image was resized or edited too heavily.';
   },function(m){r.className='bad';r.textContent=m})},30);
+}
+$('goV').onclick=doVerify;
+
+// to SVG
+var sImg=null,sName='image',sMode='trace',sUrl=null,sSvg='';
+function sHelp(){$('sOpts').hidden=sMode!=='trace';$('sHelp').textContent=sMode==='trace'
+  ?'Rebuilds the picture from colored vector shapes. Works best for logos, icons and flat artwork. Photos become a blocky, posterized look. Higher detail and more colors give larger files.'
+  :'Wraps your full-resolution picture inside an SVG file. It looks identical, but it is still a raster image inside, so it will not scale like true vector art.'}
+function sDraw(){
+  if(!sImg)return;var W=sImg.width,H=sImg.height,svg,esc='';
+  if(sMode==='embed'){
+    var u=sImg.toDataURL('image/png');
+    svg='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><image width="'+W+'" height="'+H+'" href="'+u+'" xlink:href="'+u+'"/></svg>';
+  }else{
+    var sc=Math.min(1,parseInt($('sDet').value)/Math.max(W,H)),w=Math.max(1,Math.round(W*sc)),h=Math.max(1,Math.round(H*sc));
+    var c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d',{willReadFrequently:true});
+    x.drawImage(sImg,0,0,w,h);var d=x.getImageData(0,0,w,h).data,n=w*h,op=[],i,j,k=parseInt($('sCol').value);
+    for(i=0;i<n;i++)if(d[i*4+3]>=128)op.push(i);
+    if(!op.length){$('msgS').className='bad';$('msgS').textContent='This image is fully transparent.';return}
+    op.sort(function(a,b){return(d[a*4]+d[a*4+1]+d[a*4+2])-(d[b*4]+d[b*4+1]+d[b*4+2])});
+    k=Math.min(k,op.length);var C=[];
+    for(j=0;j<k;j++){var q=op[Math.floor((j+.5)*op.length/k)]*4;C.push([d[q],d[q+1],d[q+2]])}
+    var lab=new Int16Array(n).fill(-1),it,p,bd,bj,dd;
+    for(it=0;it<8;it++){
+      var S=C.map(function(){return[0,0,0,0]});
+      for(p=0;p<op.length;p++){i=op[p];var r=d[i*4],g=d[i*4+1],b=d[i*4+2];bd=1e9;bj=0;
+        for(j=0;j<k;j++){dd=(r-C[j][0])*(r-C[j][0])+(g-C[j][1])*(g-C[j][1])+(b-C[j][2])*(b-C[j][2]);if(dd<bd){bd=dd;bj=j}}
+        lab[i]=bj;S[bj][0]+=r;S[bj][1]+=g;S[bj][2]+=b;S[bj][3]++}
+      for(j=0;j<k;j++)if(S[j][3])C[j]=[S[j][0]/S[j][3],S[j][1]/S[j][3],S[j][2]/S[j][3]];
+    }
+    var paths=[];
+    for(j=0;j<k;j++){
+      var act={},dstr='',any=false;
+      for(var y=0;y<=h;y++){
+        var na={},xx=0;
+        if(y<h)while(xx<w){
+          if(lab[y*w+xx]===j){var st=xx;while(xx<w&&lab[y*w+xx]===j)xx++;
+            var key=st+','+(xx-st);na[key]=(act[key]!==undefined)?act[key]:y;any=true}else xx++}
+        for(var kk in act)if(na[kk]===undefined){var pr=kk.split(','),y0=act[kk];
+          dstr+='M'+pr[0]+' '+y0+'h'+pr[1]+'v'+(y-y0)+'h-'+pr[1]+'z'}
+        act=na}
+      if(any){var hex='#'+C[j].map(function(v){return('0'+Math.round(v).toString(16)).slice(-2)}).join('');
+        paths.push('<path fill="'+hex+'" d="'+dstr+'"/>')}
+    }
+    svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+w+' '+h+'" shape-rendering="crispEdges">'+paths.join('')+'</svg>';
+  }
+  sSvg=svg;
+  if(sUrl)URL.revokeObjectURL(sUrl);
+  sUrl=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  $('sPrev').src=sUrl;$('sPrev').hidden=false;$('sDl').hidden=false;
+  $('msgS').className='ok';$('msgS').textContent='Done. SVG size: '+(svg.length/1024).toFixed(0)+' KB.';
+}
+wire($('dropS'),$('fileS'),function(f){
+  if(!f)return;
+  if(!/^image\//.test(f.type)){$('msgS').className='bad';$('msgS').textContent='That file isn’t an image.';return}
+  $('msgS').className='';$('msgS').textContent='Converting…';
+  var im=new Image();im.onload=function(){
+    var c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;
+    c.getContext('2d').drawImage(im,0,0);sImg=c;sName=f.name.replace(/\.[^.]+$/,'')||'image';
+    setTimeout(sDraw,20)};
+  im.onerror=function(){$('msgS').className='bad';$('msgS').textContent='This image couldn’t be read.'};
+  im.src=URL.createObjectURL(f);
 });
+$('sMode').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;sMode=b.dataset.v;
+  [].forEach.call($('sMode').children,function(c){c.setAttribute('aria-pressed',c===b)});sHelp();sDraw()});
+var sT;function sLab(){$('sDetV').textContent=$('sDet').value;$('sColV').textContent=$('sCol').value}
+['sDet','sCol'].forEach(function(id){$(id).addEventListener('input',function(){sLab();clearTimeout(sT);sT=setTimeout(sDraw,200)})});
+sLab();sHelp();
+$('sDl').onclick=function(){
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([sSvg],{type:'image/svg+xml'}));a.download=sName+'.svg';
+  document.body.appendChild(a);a.click();a.remove();
+  $('msgS').className='ok';$('msgS').textContent='Saved as '+sName+'.svg (check your Downloads folder).';
+};
 })();
 </script>
 </body>
