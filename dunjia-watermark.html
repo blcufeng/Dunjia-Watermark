@@ -29,6 +29,7 @@ button:focus-visible,input:focus-visible,.drop:focus-visible{outline:2px solid v
 .drop{border:2px dashed var(--line);border-radius:12px;padding:30px 18px;text-align:center;cursor:pointer;margin-top:14px}
 .drop.over{border-color:var(--acc)}.drop span{display:block;color:var(--mute);font-size:.9rem}
 .btn{padding:11px 18px;border-radius:9px;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);font:600 .95rem "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;cursor:pointer;margin-top:14px}
+.keyrow{display:flex;gap:8px}.show{padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer;min-width:68px}.show[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius:6px}
 #msgE,#res{margin-top:12px;font-weight:600}
@@ -46,7 +47,7 @@ canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius
 <div id="pE">
   <div class="panel">
     <label for="keyE">Secret key (your name, ID, or a passphrase)</label>
-    <input type="password" id="keyE" autocomplete="off" placeholder="Keep this to prove ownership later">
+    <div class="keyrow"><input type="password" id="keyE" autocomplete="off" placeholder="Keep this to prove ownership later"><button type="button" class="show" data-for="keyE" aria-pressed="false">Show</button></div>
     <label for="str"><span class="row"><span>Strength</span><span class="val" id="strV"></span></span></label>
     <input type="range" id="str" min="1" max="8" step="0.5" value="3">
     <div class="note">Higher survives more compression and editing, but becomes more likely to be visible. 3 is a good default.</div>
@@ -61,7 +62,7 @@ canvas{display:block;max-width:100%;height:auto;margin:14px auto 0;border-radius
 <div id="pV" hidden>
   <div class="panel">
     <label for="keyV">Secret key</label>
-    <input type="password" id="keyV" autocomplete="off" placeholder="The key used when embedding">
+    <div class="keyrow"><input type="password" id="keyV" autocomplete="off" placeholder="The key used when embedding"><button type="button" class="show" data-for="keyV" aria-pressed="false">Show</button></div>
     <div class="drop" id="dropV" tabindex="0" role="button">Choose or drop an image to check<span>Works best on the PNG you downloaded</span></div>
     <input type="file" id="fileV" accept="image/*" hidden>
     <div id="res" role="status"></div>
@@ -100,6 +101,9 @@ function wire(drop,file,fn){
   drop.addEventListener('dragleave',function(){drop.classList.remove('over')});
   drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('over');fn(e.dataTransfer.files[0])});
 }
+document.querySelectorAll('.show').forEach(function(b){b.onclick=function(){
+  var i=$(b.dataset.for),on=i.type==='password';i.type=on?'text':'password';
+  b.textContent=on?'Hide':'Show';b.setAttribute('aria-pressed',on)}});
 // tabs
 $('tabs').onclick=function(e){var b=e.target.closest('button');if(!b)return;
   [].forEach.call($('tabs').children,function(c){c.setAttribute('aria-pressed',c===b)});
