@@ -1,1 +1,1 @@
-Just download it to use. Enjoy.
+Just download and enjoy!
